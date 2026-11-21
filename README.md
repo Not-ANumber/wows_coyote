@@ -3,6 +3,9 @@
 战舰世界（World of Warships）遥测驱动的 DG-LAB 郊狼控制程序，Windows x64
 standalone。支持 V4 Relay（DG-LAB 4）和 V3 Socket（郊狼 App）。
 
+> 第一次使用请按 [初次使用完整流程](docs/初次使用完整流程.md) 操作：
+> 安装前置 Mod → 验证遥测 → 安装程序 → 扫码 → 低强度测试。
+
 ## 前置 Mod（必需）
 
 本程序不直接读取游戏内存，而是读取 **ExportShipStatus** Mod 写出的
