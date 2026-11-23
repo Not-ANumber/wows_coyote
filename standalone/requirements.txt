@@ -1,0 +1,8 @@
+# Python 3.13
+websockets==17.4
+qrcode==8.2
+colorama==0.4.6
+
+# 桌面主窗口 + 置顶 overlay（Windows 另需 WebView2 Runtime）
+# 缺失时自动回退浏览器模式
+pywebview>=6.0

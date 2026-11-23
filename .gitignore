@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+*.log
+qr.svg
+settings.json
+.phase0deps/
+build/
+dist/
+dist_installer/
+releases/
+*.spec.bak

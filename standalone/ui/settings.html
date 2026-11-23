@@ -1,0 +1,1439 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>设置 · wows_coyote</title>
+<script>
+try {
+  if (!document.documentElement.dataset.theme) {
+    const savedTheme = localStorage.getItem("wows-theme");
+    if (savedTheme === "light" || savedTheme === "dark") {
+      document.documentElement.dataset.theme = savedTheme;
+    }
+  }
+} catch (err) {}
+</script>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header>
+  <div class="brand"><span class="mark"></span>wows_coyote <span class="slash" id="pageKind">/ 设置</span></div>
+  <div class="header-status">
+    <span class="status-pill" id="statusPill"><i class="dot"></i><span>连接中</span></span>
+  </div>
+  <div class="actions">
+    <button id="btnTheme" class="btn ghost theme-btn" type="button"
+            title="切换亮色主题" aria-label="切换到亮色主题">☀</button>
+    <span class="hint" id="saveStatus"></span>
+    <button id="save" class="btn primary">保存设置</button>
+    <button id="quit" class="btn danger-ghost" title="退出主程序会立即归零">退出程序</button>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="主导航">
+  <a class="tab" id="tabConsole" href="/">控制台</a>
+  <a class="tab" id="tabSettings" href="/settings">设置</a>
+  <a class="tab" id="tabEvents" href="/events">事件</a>
+</nav>
+
+<main class="settings">
+  <section class="card" data-view="general">
+    <div class="card-head"><h2>设备</h2></div>
+    <div class="field-row">
+      <label for="transport">连接方式</label>
+      <select id="transport" data-key="transport">
+        <option value="v4">V4 Relay（DG-LAB 4）</option>
+        <option value="v3">V3 Socket（郊狼 App）</option>
+      </select>
+      <label for="v4_relay">Relay</label>
+      <select id="v4_relay" data-key="v4_relay">
+        <option value="official">官方</option>
+        <option value="local">本机中继</option>
+      </select>
+      <span class="hint">保存后自动切换，二维码会刷新；切换连接方式会断开当前 App，需要重新扫码</span>
+    </div>
+    <div class="pair">
+      <div class="qr-box" hidden><img id="qr" alt="DG-LAB App 配对二维码"></div>
+      <div class="pair-text">
+        <div class="pair-title-row">
+          <div class="pair-title" id="pairTitle">连接 DG-LAB App</div>
+          <button type="button" class="btn primary pair-save" id="refreshQr">保存并刷新</button>
+        </div>
+        <p class="hint" id="pairHint">手机 App → Socket 控制 → 扫码。</p>
+        <div class="hint" id="deviceTransport">—</div>
+        <div class="hint" id="deviceLimits">—</div>
+        <div class="hint">A/B 上限以 App 上报的通道上限为准，不是当前输出。</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" data-view="general">
+    <div class="card-head">
+      <h2>输出窗口</h2>
+      <span class="hint">详细模式：额外显示当前触发事件</span>
+    </div>
+    <div class="output-grid">
+      <div class="output-pane">
+        <div class="pane-head">
+          <b>OBS 浏览器源</b>
+          <span class="hint" id="obsStatus">—</span>
+        </div>
+        <div class="field-row">
+          <label class="switch"><input type="checkbox" data-key="obs_enabled"><span>开启 OBS 源</span></label>
+        </div>
+        <div class="field-row">
+          <label for="obs_port">端口</label>
+          <input id="obs_port" data-key="obs_port" type="number" min="1024" max="65535" step="1">
+          <span class="hint">仅本机</span>
+        </div>
+        <div class="field-row">
+          <label for="obs_opacity">背景不透明度（%）</label>
+          <input id="obs_opacity" data-key="obs_opacity" type="number" min="20" max="100" step="1">
+        </div>
+        <div class="field-row">
+          <label class="switch"><input type="checkbox" data-key="obs_detail"><span>详细模式</span></label>
+        </div>
+        <div class="obs-url-row">
+          <span class="hint">浏览器源地址</span>
+          <code id="obsUrl">—</code>
+          <button type="button" class="btn ghost sm" id="copyObs">复制</button>
+        </div>
+        <p class="hint" style="margin:0">
+          OBS 添加「浏览器源」，尺寸 400×240。
+        </p>
+      </div>
+      <div class="output-pane">
+        <div class="pane-head"><b>悬浮窗</b></div>
+        <div class="field-row">
+          <label class="switch"><input type="checkbox" id="overlayLock"><span>锁定（鼠标穿透）</span></label>
+        </div>
+        <p class="hint" id="overlayLockHint" style="margin:0">
+          锁定后悬浮窗不再接收鼠标点击，可直接操作游戏。
+        </p>
+        <div class="field-row">
+          <label for="overlay_opacity">整体不透明度（%）</label>
+          <input id="overlay_opacity" data-key="overlay_opacity" type="number" min="30" max="100" step="1">
+        </div>
+        <div class="field-row">
+          <label class="switch"><input type="checkbox" data-key="overlay_detail"><span>详细模式</span></label>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" data-view="general">
+    <div class="card-head"><h2>遥测文件</h2><span class="hint" id="telemetryPath">等待文件</span></div>
+    <div class="field-row">
+      <input id="telemetry_path" data-key="telemetry_path" type="text"
+             placeholder="留空自动查找 wows_telemetry.jsonl">
+      <button id="browse" class="btn">浏览</button>
+    </div>
+    <p class="hint" style="margin:8px 0 0">
+      选择 .jsonl，或 profile 文件夹 / 游戏根目录；更换路径会结束当前战局并重新接入。
+    </p>
+    <details class="more">
+      <summary>高级</summary>
+      <div class="more-body">
+        <label>读取间隔 <input id="polling_rate" data-key="polling_rate" type="number" min="50" max="2000" step="50"> ms</label>
+        <label>静默超时 <input id="telemetry_timeout_s" data-key="telemetry_timeout_s" type="number" min="10" max="600" step="5"> s</label>
+        <span class="hint">超时会结束本局</span>
+      </div>
+    </details>
+  </section>
+
+  <section class="card" data-view="general" id="updateCard">
+    <div class="card-head">
+      <h2>更新</h2>
+      <span class="hint" id="updateCurrent">v?</span>
+    </div>
+    <div class="field-row">
+      <label class="switch"><input type="checkbox" data-key="check_updates"><span>启动时检查更新</span></label>
+      <button type="button" class="btn ghost sm" id="btnCheckUpdate">检查更新</button>
+      <span class="hint" id="updateStatus">—</span>
+    </div>
+    <div class="update-panel" id="updatePanel" hidden>
+      <div class="update-head">
+        <b id="updateVersion">—</b>
+        <span class="hint" id="updateMeta"></span>
+      </div>
+      <pre class="update-notes" id="updateNotes"></pre>
+      <div class="update-actions">
+        <button type="button" class="btn primary sm" id="btnUpdateNotes">前往 GitHub 下载</button>
+        <button type="button" class="btn ghost sm" id="btnUpdateSkip">跳过此版本</button>
+      </div>
+      <span class="hint" id="updateHint"></span>
+    </div>
+  </section>
+
+  <section class="card" data-view="events">
+    <div class="card-head">
+      <h2>配置方案</h2>
+      <span class="hint">只包含五类事件参数</span>
+    </div>
+    <div class="preset-row">
+      <select id="presetSelect" aria-label="已保存的事件方案"></select>
+      <button type="button" id="presetLoad" class="btn">读取</button>
+      <button type="button" id="presetDelete" class="btn ghost">删除</button>
+      <button type="button" id="presetExport" class="btn ghost">导出</button>
+    </div>
+    <div class="preset-row">
+      <input id="presetName" type="text" maxlength="40"
+             placeholder="方案名称，例如：低强度">
+      <button type="button" id="presetSave" class="btn primary">保存为方案</button>
+      <button type="button" id="presetImportBtn" class="btn ghost">从文件导入</button>
+      <input id="presetFile" type="file" accept=".json,application/json" hidden>
+    </div>
+    <p class="hint preset-note">
+      「保存为方案」只保存当前表单的事件参数；「读取」会立即应用并保存到本机设置。
+      遥测、设备和输出设置不受影响。
+      <br>方案文件位置：<code id="presetDir">—</code>
+    </p>
+  </section>
+
+  <section class="card" data-view="events">
+    <div class="card-head"><h2>事件自定义</h2><span class="hint">修改后点「保存设置」</span></div>
+    <div class="event-grid">
+      <div class="event-card" data-event-card="base">
+        <div class="event-head">
+          <b>基础</b>
+          <label class="switch"><input type="checkbox" data-key="base_enable"><span>启用</span></label>
+        </div>
+        <div class="event-fields">
+          <label>满血 <input type="number" data-key="base_min" min="0" max="100" step="1"></label>
+          <label>空血 <input type="number" data-key="base_max" min="0" max="100" step="1"></label>
+          <label>通道 <select data-key="base_channel"><option value="both">A+B</option><option value="a">A</option><option value="b">B</option></select></label>
+          <label class="wide">波形 <select data-key="base_preset" data-template="1"></select></label>
+          <div class="wave-preview" data-preview-for="base_preset"></div>
+        </div>
+        <details class="more">
+          <summary>高级参数</summary>
+          <div class="more-body">
+            <label class="switch"><input type="checkbox" data-key="base_curve_enable"><span>使用函数表</span></label>
+          </div>
+          <div class="curve-row">
+            <input id="base_curve_path" data-key="base_curve_path" type="text"
+                   placeholder="留空使用程序目录 base.json">
+            <button type="button" class="btn ghost sm" data-browse="base_curve_path">浏览…</button>
+          </div>
+          <div class="curve-current" id="baseCurveCurrent">当前函数表：—</div>
+          <div class="curve-preview" id="baseCurvePreview" hidden></div>
+        </details>
+      </div>
+
+      <div class="event-card" data-event-card="hit">
+        <div class="event-head">
+          <b>受击</b>
+          <label class="switch"><input type="checkbox" data-key="hit_enable"><span>启用</span></label>
+        </div>
+        <div class="event-fields">
+          <label>强度 <input type="number" data-key="hit_strength" min="0" max="100" step="1"></label>
+          <label>保持 <input type="number" data-key="hit_duration_s" min="0.1" max="20" step="0.1"> s</label>
+          <label>触发阈值 <input type="number" data-key="hit_threshold_pct" min="0" max="100" step="0.5"> %</label>
+          <label>满强度 <input type="number" data-key="hit_full_pct" min="0" max="100" step="0.5"> %</label>
+          <label>通道 <select data-key="hit_channel"><option value="both">A+B</option><option value="a">A</option><option value="b">B</option></select></label>
+          <label class="wide">波形 <select data-key="hit_preset" data-template="1"></select></label>
+          <div class="wave-preview" data-preview-for="hit_preset"></div>
+        </div>
+        <details class="more">
+          <summary>高级参数</summary>
+          <div class="more-body">
+            <label class="switch"><input type="checkbox" data-key="hit_curve_enable"><span>使用函数表</span></label>
+          </div>
+          <div class="curve-row">
+            <input id="hit_curve_path" data-key="hit_curve_path" type="text"
+                   placeholder="留空使用程序目录 hit.json">
+            <button type="button" class="btn ghost sm" data-browse="hit_curve_path">浏览…</button>
+          </div>
+          <div class="curve-current" id="hitCurveCurrent">当前函数表：—</div>
+          <div class="curve-preview" id="hitCurvePreview" hidden></div>
+        </details>
+      </div>
+
+      <div class="event-card" data-event-card="fire">
+        <div class="event-head">
+          <b>起火</b>
+          <label class="switch"><input type="checkbox" data-key="fire_enable"><span>启用</span></label>
+        </div>
+        <div class="event-fields">
+          <label>首层 <input type="number" data-key="fire_strength" min="0" max="100" step="1"></label>
+          <label>每层 <input type="number" data-key="fire_stack_add" min="0" max="100" step="1"></label>
+          <label>通道 <select data-key="fire_channel"><option value="both">A+B</option><option value="a">A</option><option value="b">B</option></select></label>
+          <label class="wide">波形 <select data-key="fire_preset" data-template="1"></select></label>
+          <div class="wave-preview" data-preview-for="fire_preset"></div>
+        </div>
+      </div>
+
+      <div class="event-card" data-event-card="flood">
+        <div class="event-head">
+          <b>进水</b>
+          <label class="switch"><input type="checkbox" data-key="flood_enable"><span>启用</span></label>
+        </div>
+        <div class="event-fields">
+          <label>首层 <input type="number" data-key="flood_strength" min="0" max="100" step="1"></label>
+          <label>每层 <input type="number" data-key="flood_stack_add" min="0" max="100" step="1"></label>
+          <label>通道 <select data-key="flood_channel"><option value="both">A+B</option><option value="a">A</option><option value="b">B</option></select></label>
+          <label class="wide">波形 <select data-key="flood_preset" data-template="1"></select></label>
+          <div class="wave-preview" data-preview-for="flood_preset"></div>
+        </div>
+      </div>
+
+      <div class="event-card" data-event-card="death">
+        <div class="event-head">
+          <b>死亡</b>
+          <label class="switch"><input type="checkbox" data-key="death_enable"><span>启用</span></label>
+        </div>
+        <div class="event-fields">
+          <label>强度 <input type="number" data-key="death_strength" min="0" max="100" step="1"></label>
+          <label>持续 <input type="number" data-key="death_duration_s" min="0.1" max="20" step="0.1"> s</label>
+          <label>通道 <select data-key="death_channel"><option value="both">A+B</option><option value="a">A</option><option value="b">B</option></select></label>
+          <label class="wide">波形 <select data-key="death_preset" data-template="1"></select></label>
+          <div class="wave-preview" data-preview-for="death_preset"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <p class="footnote">波形来自内置官方清单 · 设置保存在本机 · <span id="appVersion">v?</span></p>
+</main>
+
+<div class="modal" id="browseModal" hidden>
+  <div class="modal-box">
+    <div class="modal-head">
+      <b id="browseTitle">选择遥测文件</b>
+      <button class="btn ghost sm" id="browseClose">×</button>
+    </div>
+    <div class="path-row">
+      <button id="browseUp" class="btn ghost sm">上级</button>
+      <span id="browsePath" class="path-text">—</span>
+    </div>
+    <div class="file-list" id="fileList"></div>
+    <div class="modal-foot">
+      <span class="hint" id="browseHint">选择 .jsonl，或进入游戏根目录下的 profile 后点「使用当前文件夹」</span>
+      <button id="browseUseDir" class="btn ghost sm">使用当前文件夹</button>
+      <button id="browseChoose" class="btn primary sm" disabled>使用此文件</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const APP_SHELL = new URLSearchParams(location.search).get("app") === "1";
+const EVENTS_MODE = location.pathname.endsWith("/events");
+let internalNavigation = false;
+const fields = Array.from(document.querySelectorAll("[data-key]"));
+let dirty = false;
+let templateSig = "";
+let templateMap = new Map();
+let qrLoaded = false;
+let qrTarget = "";
+let toastTimer = null;
+let browseState = { path: "", parent: "", selected: null,
+                    target: "telemetry_path" };
+let curveResolved = { base: "", hit: "" };
+let currentTheme = document.documentElement.dataset.theme === "light"
+  ? "light" : "dark";
+let nativeTheme = "";
+let pendingTheme = "";
+let themeRequest = 0;
+let presetSig = "";
+let presetItems = [];
+let updateLatest = "";
+let pendingLock = null;
+let lockRequest = 0;
+
+function toast(text) {
+  const el = $("toast");
+  el.textContent = text;
+  el.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.hidden = true; }, 3000);
+}
+
+function setStatus(text, state) {
+  const el = $("statusPill");
+  el.className = "status-pill " + (state || "");
+  el.querySelector("span").textContent = text;
+}
+
+function appApi() {
+  return (window.pywebview && window.pywebview.api) ? window.pywebview.api : null;
+}
+
+function applyTheme(theme, notifyNative = true) {
+  const value = theme === "light" ? "light" : "dark";
+  const changed = document.documentElement.dataset.theme !== value;
+  currentTheme = value;
+  if (changed) {
+    document.documentElement.dataset.theme = value;
+    try { localStorage.setItem("wows-theme", value); } catch (err) {}
+  }
+  const button = $("btnTheme");
+  if (button) {
+    const label = value === "light" ? "切换暗色主题" : "切换亮色主题";
+    button.textContent = value === "light" ? "☾" : "☀";
+    button.title = label;
+    button.setAttribute("aria-label", label);
+  }
+  if (!notifyNative || nativeTheme === value) return;
+  const api = appApi();
+  if (!api || !api.set_theme) return;
+  nativeTheme = value;
+  try {
+    Promise.resolve(api.set_theme(value)).catch(() => {});
+  } catch (err) {}
+}
+
+async function toggleTheme() {
+  const next = currentTheme === "light" ? "dark" : "light";
+  const request = ++themeRequest;
+  pendingTheme = next;
+  applyTheme(next);
+  try {
+    const response = await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ settings: { theme: next } }),
+    });
+    if (!response.ok) throw new Error(response.status);
+  } catch (err) {
+    if (request === themeRequest) {
+      pendingTheme = "";
+      toast("主题已切换，但未能保存");
+    }
+  }
+  // 等下一次 /api/state 确认服务端已写入；避免旧轮询把界面切回去。
+  setTimeout(() => {
+    if (request === themeRequest && pendingTheme === next) pendingTheme = "";
+  }, 5000);
+}
+
+function applyTabs() {
+  for (const section of document.querySelectorAll("[data-view]")) {
+    section.hidden = EVENTS_MODE
+      ? section.dataset.view !== "events"
+      : section.dataset.view !== "general";
+  }
+  const suffix = APP_SHELL ? "?app=1" : "";
+  $("tabConsole").href = "/" + suffix;
+  $("tabSettings").href = "/settings" + suffix;
+  $("tabEvents").href = "/events" + suffix;
+  $("pageKind").textContent = EVENTS_MODE ? "/ 事件" : "/ 设置";
+  document.title = (EVENTS_MODE ? "事件" : "设置") + " · wows_coyote";
+  const current = EVENTS_MODE ? "tabEvents" : "tabSettings";
+  for (const id of ["tabSettings", "tabEvents"]) {
+    const tab = $(id);
+    tab.classList.toggle("active", id === current);
+    if (id === current) tab.setAttribute("aria-current", "page");
+    else tab.removeAttribute("aria-current");
+  }
+  for (const tab of document.querySelectorAll(".tabs .tab")) {
+    tab.addEventListener("click", () => {
+      if (!APP_SHELL && !(window.pywebview && window.pywebview.api)) {
+        internalNavigation = true;
+      }
+    });
+  }
+}
+
+function setValue(el, value) {
+  if (document.activeElement === el) return;
+  if (el.type === "checkbox") {
+    el.checked = !!value;
+  } else {
+    el.value = value === null || value === undefined ? "" : String(value);
+  }
+}
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+function svgNode(tag, attrs) {
+  const node = document.createElementNS(SVG_NS, tag);
+  for (const [key, value] of Object.entries(attrs || {})) {
+    node.setAttribute(key, String(value));
+  }
+  return node;
+}
+
+function previewHeader(container, name, meta, middle = "强度 / 频率") {
+  const head = document.createElement("div");
+  head.className = "preview-head";
+  const left = document.createElement("span");
+  left.className = "preview-name";
+  left.textContent = name;
+  const mid = document.createElement("span");
+  mid.textContent = middle;
+  const right = document.createElement("span");
+  right.className = "preview-meta";
+  right.textContent = meta;
+  head.append(left);
+  if (middle) head.append(mid);
+  head.append(right);
+  container.append(head);
+}
+
+function renderWavePreview(container, template) {
+  if (!container) return;
+  container.replaceChildren();
+  if (!template) {
+    const empty = document.createElement("div");
+    empty.className = "preview-empty";
+    empty.textContent = "无波形（只输出强度）";
+    container.append(empty);
+    return;
+  }
+  const preview = template.preview || {};
+  const strength = preview.strength || [];
+  const freq = preview.freq || [];
+  if (!strength.length) {
+    const empty = document.createElement("div");
+    empty.className = "preview-empty";
+    empty.textContent = "该模板没有可预览的帧";
+    container.append(empty);
+    return;
+  }
+  previewHeader(
+    container,
+    template.name || template.id,
+    `${template.frames} 帧 · ${template.loop ? "loop" : "one-shot"}`,
+    "柱高=强度 · 密度=频率");
+  container.title = "DGHub 风格：柱高表示强度，竖向条密度表示频率";
+  const width = 240;
+  const height = 44;
+  const pad = 3;
+  const innerWidth = width - 2 * pad;
+  const innerHeight = height - 2 * pad;
+  const svg = svgNode("svg", {
+    viewBox: `0 0 ${width} ${height}`,
+    preserveAspectRatio: "none",
+    "shape-rendering": "crispEdges",
+    "aria-hidden": "true",
+  });
+  svg.append(svgNode("line", {
+    x1: pad, y1: height - pad, x2: width - pad, y2: height - pad,
+    class: "preview-grid",
+  }));
+  const count = strength.length;
+  const segment = innerWidth / count;
+  for (let index = 0; index < count; index += 1) {
+    const level = Math.max(0, Math.min(100, Number(strength[index]) || 0)) / 100;
+    const barHeight = level * innerHeight;
+    if (barHeight <= 0.5) continue;
+    const y = height - pad - barHeight;
+    const frequency = Math.max(10, Number(freq[index]) || 60);
+    if (count === 1 || frequency <= 10) {
+      svg.append(svgNode("rect", {
+        x: (pad + index * segment + 0.5).toFixed(1),
+        y: y.toFixed(1),
+        width: Math.max(1, segment - 1).toFixed(1),
+        height: barHeight.toFixed(1),
+        class: "preview-bar",
+      }));
+      continue;
+    }
+    // DGHub 风格：频率越高，单个帧内的竖条越少、越稀疏。
+    const pulseCount = Math.max(1, Math.min(4, Math.ceil(100 / frequency)));
+    const slot = segment / pulseCount;
+    const barWidth = Math.max(1, Math.min(2, slot * 0.55));
+    for (let pulse = 0; pulse < pulseCount; pulse += 1) {
+      const x = pad + index * segment + pulse * slot + (slot - barWidth) / 2;
+      svg.append(svgNode("rect", {
+        x: x.toFixed(1),
+        y: y.toFixed(1),
+        width: barWidth.toFixed(1),
+        height: barHeight.toFixed(1),
+        class: "preview-bar",
+      }));
+    }
+  }
+  container.append(svg);
+}
+
+function renderCurvePreview(container, info, label, invertX = false) {
+  if (!container) return;
+  container.replaceChildren();
+  if (!info || !info.points || !info.points.length) {
+    const empty = document.createElement("div");
+    empty.className = "preview-empty";
+    empty.textContent = (info && info.error) || "函数表未加载";
+    container.append(empty);
+    return;
+  }
+  const points = [...info.points].sort((a, b) => a[0] - b[0]);
+  previewHeader(container, label, `${points.length} 点`, "");
+  const width = 240;
+  const height = 64;
+  const pad = 8;
+  const svg = svgNode("svg", {
+    viewBox: `0 0 ${width} ${height}`,
+    preserveAspectRatio: "none",
+    "aria-hidden": "true",
+  });
+  // 简单坐标轴：左侧纵轴=强度，底部横轴=血量/损失。
+  svg.append(svgNode("line", {
+    x1: pad, y1: pad, x2: pad, y2: height - pad, class: "preview-grid",
+  }));
+  svg.append(svgNode("line", {
+    x1: pad, y1: height - pad, x2: width - pad, y2: height - pad,
+    class: "preview-grid",
+  }));
+  const xRatio = value => {
+    const ratio = Math.max(0, Math.min(100, value)) / 100;
+    return invertX ? 1 - ratio : ratio;
+  };
+  const xFor = value => pad + xRatio(value) * (width - 2 * pad);
+  const yFor = value => height - pad - (
+    Math.max(0, Math.min(100, value)) / 100) * (height - 2 * pad);
+  const linePoints = points.map(([x, y]) =>
+    `${xFor(x).toFixed(1)},${yFor(y).toFixed(1)}`).join(" ");
+  svg.append(svgNode("polyline", { points: linePoints, class: "preview-line" }));
+  for (const [x, y] of points) {
+    svg.append(svgNode("circle", {
+      cx: xFor(x).toFixed(1), cy: yFor(y).toFixed(1), r: 1.8,
+      class: "preview-dot",
+    }));
+  }
+  const plot = document.createElement("div");
+  plot.className = "preview-plot";
+  plot.append(svg);
+
+  const yTicks = document.createElement("div");
+  yTicks.className = "preview-y-ticks";
+  for (const value of [100, 50, 0]) {
+    const tick = document.createElement("span");
+    tick.textContent = value + "%";
+    tick.style.top = ((yFor(value) / height) * 100).toFixed(2) + "%";
+    yTicks.append(tick);
+  }
+  plot.append(yTicks);
+
+  const ticks = document.createElement("div");
+  ticks.className = "preview-ticks";
+  const tickValues = invertX ? [100, 50, 0] : [0, 50, 100];
+  tickValues.forEach((value, index) => {
+    const tick = document.createElement("span");
+    tick.textContent = value + "%";
+    tick.style.left = (xFor(value) / width * 100).toFixed(2) + "%";
+    tick.style.transform = index === 0 ? "none"
+      : (index === 2 ? "translateX(-100%)" : "translateX(-50%)");
+    ticks.append(tick);
+  });
+  plot.append(ticks);
+  container.append(plot);
+
+  const axis = document.createElement("div");
+  axis.className = "preview-axis-note";
+  const xName = label.includes("损失") ? "损失" : "血量";
+  axis.textContent = invertX
+    ? `横轴：${xName} 100% → 0%（左高右低） · 纵轴：强度 0–100%`
+    : `横轴：${xName} 0% → 100% · 纵轴：强度 0–100%`;
+  container.append(axis);
+}
+
+function updateWavePreviews() {
+  for (const container of document.querySelectorAll("[data-preview-for]")) {
+    const select = document.querySelector(
+      `select[data-key="${container.dataset.previewFor}"]`);
+    renderWavePreview(
+      container, select ? templateMap.get(select.value) : null);
+  }
+}
+
+function populateTemplates(templates) {
+  templateMap = new Map((templates || []).map(t => [t.id, t]));
+  const sig = (templates || []).map(t => t.id).join("|");
+  if (sig === templateSig) {
+    updateWavePreviews();
+    return;
+  }
+  templateSig = sig;
+  const selects = Array.from(document.querySelectorAll("select[data-template]"));
+  for (const select of selects) {
+    const current = select.value;
+    select.replaceChildren();
+    const none = document.createElement("option");
+    none.value = "";
+    none.textContent = "无波形（只输出强度）";
+    select.append(none);
+    for (const tpl of templates || []) {
+      const option = document.createElement("option");
+      option.value = tpl.id;
+      option.textContent = tpl.name || tpl.id;
+      select.append(option);
+    }
+    if (current && !Array.from(select.options).some(o => o.value === current)) {
+      const option = document.createElement("option");
+      option.value = current;
+      option.textContent = current + "（当前值，不在库中）";
+      select.append(option);
+    }
+    select.value = current;
+  }
+  updateWavePreviews();
+}
+
+function syncCurveVisibility() {
+  for (const [key, id] of [
+    ["base_curve_enable", "baseCurvePreview"],
+    ["hit_curve_enable", "hitCurvePreview"],
+  ]) {
+    const toggle = document.querySelector(`[data-key="${key}"]`);
+    const preview = $(id);
+    if (preview) preview.hidden = !(toggle && toggle.checked);
+  }
+}
+
+function syncEventCards() {
+  for (const card of document.querySelectorAll("[data-event-card]")) {
+    const toggle = card.querySelector(".event-head input[type='checkbox']");
+    if (toggle) card.classList.toggle("disabled", !toggle.checked);
+  }
+  syncCurveVisibility();
+}
+
+function syncOverlayLock(state) {
+  const field = $("overlayLock");
+  if (!field) return;
+  const locked = !!(state.config || {}).overlay_locked;
+  // 防止旧轮询把刚点下的开关切回去；等服务器确认同值后再接管。
+  if (pendingLock === null) {
+    field.checked = locked;
+  } else if (locked === pendingLock) {
+    pendingLock = null;
+    field.checked = locked;
+  }
+  const key = String((state.hotkeys || {}).overlay_lock || "").trim();
+  $("overlayLockHint").textContent = locked
+    ? "已锁定：鼠标点击穿透；用 "
+      + (key ? key + " 或本开关" : "本开关") + "解锁。"
+    : "锁定后悬浮窗不再接收鼠标点击，可直接操作游戏。";
+}
+
+function fillForm(config) {
+  for (const el of fields) {
+    const key = el.dataset.key;
+    if (!(key in config)) continue;
+    setValue(el, config[key]);
+  }
+  syncEventCards();
+  syncTransportControls();
+}
+
+function syncTransportControls() {
+  const transport = document.querySelector('[data-key="transport"]');
+  const relay = document.querySelector('[data-key="v4_relay"]');
+  if (!transport || !relay) return;
+  const isV4 = transport.value === "v4";
+  relay.disabled = !isV4;
+  relay.style.opacity = isV4 ? "" : "0.5";
+}
+
+function ensureQr(target) {
+  const img = $("qr");
+  const box = img.closest(".qr-box");
+  const key = target || "";
+  if (!key) {
+    // 控制方 ID 尚未拿到（或 Relay 正在重连）：先隐藏旧的二维码。
+    box.hidden = true;
+    qrLoaded = false;
+    qrTarget = "";
+    return;
+  }
+  if (qrLoaded && qrTarget === key) return;
+  if (img.dataset.loading === "1" && qrTarget === key) return;
+  qrTarget = key;
+  img.dataset.loading = "1";
+  img.onload = () => {
+    img.dataset.loading = "0";
+    qrLoaded = true;
+    box.hidden = false;
+  };
+  img.onerror = () => {
+    img.dataset.loading = "0";
+    box.hidden = true;
+  };
+  img.src = "/qr.svg?t=" + encodeURIComponent(key);
+}
+
+function forceQrReload(state, message) {
+  const device = (state && state.device) || {};
+  const key = device.target_id || device.client_id || "";
+  const img = $("qr");
+  const box = img.closest(".qr-box");
+  if (!key) {
+    box.hidden = true;
+    qrLoaded = false;
+    qrTarget = "";
+    toast("保存完成，但二维码尚未生成");
+    return;
+  }
+  qrLoaded = false;
+  qrTarget = key;
+  img.dataset.loading = "1";
+  img.onload = () => {
+    img.dataset.loading = "0";
+    qrLoaded = true;
+    box.hidden = false;
+    if (message) toast(message);
+  };
+  img.onerror = () => {
+    img.dataset.loading = "0";
+    box.hidden = true;
+    toast("二维码加载失败：请确认设备已连接");
+  };
+  img.src = "/qr.svg?t=" + encodeURIComponent(key) + "&r=" + Date.now();
+}
+
+async function saveAndRefreshQr() {
+  const button = $("refreshQr");
+  button.disabled = true;
+  try {
+    await save(true);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function formatUpdateTime(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "" : date.toLocaleString();
+}
+
+function renderUpdate(state) {
+  const update = state.update || {};
+  updateLatest = update.latest || "";
+  const current = update.current || state.app_version || "?";
+  $("updateCurrent").textContent = "当前 v" + current;
+  $("btnCheckUpdate").disabled = !!update.checking;
+
+  const available = !!update.available;
+  let status = "—";
+  if (update.checking) status = "检查中…";
+  else if (available) status = "发现新版本" + (update.error ? "（检查失败）" : "");
+  else if (update.error) status = "检查失败：" + update.error;
+  else if (update.latest) status = "已是最新 v" + current;
+  else if (!update.enabled) status = "自动检查已关闭";
+  $("updateStatus").textContent = status;
+  $("updateStatus").title = update.error || "";
+
+  const panel = $("updatePanel");
+  panel.hidden = !available;
+  if (!available) return;
+
+  $("updateVersion").textContent = "v" + (update.latest || "?");
+  const published = formatUpdateTime(update.published_at);
+  $("updateMeta").textContent = published ? "发布于 " + published : "";
+  $("updateNotes").textContent = update.notes || "这次更新没有附加说明。";
+  $("btnUpdateNotes").disabled = !update.notes_url;
+  $("btnUpdateSkip").textContent = update.skipped ? "取消跳过" : "跳过此版本";
+  $("updateHint").textContent = update.skipped
+    ? "已跳过此版本；手动检查仍会显示，安装包从 GitHub 下载。"
+    : "安装包从 GitHub 下载；安装前请先关闭主窗口，程序会归零退出。";
+}
+
+function render(state) {
+  const device = state.device || {};
+  const telemetry = state.telemetry || {};
+  const cfg = state.config || {};
+  const serverTheme = cfg.theme || "dark";
+
+  if (pendingTheme) {
+    if (serverTheme === pendingTheme) {
+      pendingTheme = "";
+      applyTheme(serverTheme);
+    }
+  } else {
+    applyTheme(serverTheme);
+  }
+  $("appVersion").textContent = "v" + (state.app_version || "?");
+  renderUpdate(state);
+
+  if (device.muted) setStatus("输出已急停", "bad");
+  else if (!device.connected) setStatus("设备未连接", "");
+  else setStatus("已连接", "ok");
+
+  populateTemplates(state.templates || []);
+  renderPresetOptions(state);
+  if (!dirty) fillForm(cfg);
+  syncOverlayLock(state);
+  updateWavePreviews();
+
+  const slot = device.slot;
+  const isV4 = device.transport === "v4";
+  const transportName = isV4
+    ? ("V4 Relay · " + (device.relay_mode === "local" ? "本机中继" : "远程"))
+    : "V3 Socket";
+  const slotName = slot && (slot.name || slot.slot_id)
+    ? (slot.name || slot.slot_id)
+      + (slot.has_device === false ? "（未连接）" : "")
+    : "";
+  $("deviceTransport").textContent = "当前：" + transportName
+    + (device.app_count ? " · App " + device.app_count : "")
+    + (slotName ? " · 设备 " + slotName : "");
+  $("pairTitle").textContent = isV4 ? "连接 DG-LAB 4 App" : "连接郊狼 App";
+  $("pairHint").textContent = isV4
+    ? (device.relay_mode === "local"
+      ? "DG-LAB 4 App → Socket 控制 → 扫码。手机和电脑需在本机中继的局域网。"
+      : "DG-LAB 4 App → Socket 控制 → 扫码。使用远程 Relay，不要求同一局域网。")
+    : "手机郊狼 App → Socket 控制 → 扫码。手机和电脑需在同一局域网。";
+  const limits = device.limits;
+  const limitsKnown = !!limits && (limits.a > 0 || limits.b > 0);
+  $("deviceLimits").textContent = !device.connected
+    ? "App 通道上限 —"
+    : (limitsKnown
+      ? "App 通道上限 A " + limits.a + " · B " + limits.b
+      : "App 通道上限：等待 App 上报");
+
+  const path = telemetry.path || cfg.telemetry_path || "";
+  $("telemetryPath").textContent = telemetry.found_once
+    ? "已连接"
+    : (telemetry.enabled === false ? "已关闭" : "等待文件");
+  $("telemetryPath").title = path ? "当前： " + path : "";
+
+  const obs = state.obs || {};
+  const obsPort = obs.port || cfg.obs_port || 8787;
+  $("obsUrl").textContent = obs.url || (
+    "http://127.0.0.1:" + obsPort + "/obs");
+  $("obsStatus").textContent = !obs.enabled
+    ? "已关闭"
+    : (obs.running
+      ? "运行中 · 端口 " + obs.port
+      : "未运行" + (obs.error ? "：" + obs.error : ""));
+
+  const curvePaths = state.curve_paths || {};
+  const curveData = state.curves || {};
+  const baseCurve = curveData.base || {};
+  const hitCurve = curveData.hit || {};
+  curveResolved = {
+    base: baseCurve.path || curvePaths.base || "",
+    hit: hitCurve.path || curvePaths.hit || "",
+  };
+  $("baseCurveCurrent").textContent = "当前函数表：" + (
+    curveResolved.base || "—");
+  $("hitCurveCurrent").textContent = "当前函数表：" + (
+    curveResolved.hit || "—");
+  renderCurvePreview($("baseCurvePreview"), baseCurve, "血量 → 强度", true);
+  renderCurvePreview($("hitCurvePreview"), hitCurve, "损失% → 强度");
+  syncCurveVisibility();
+
+  ensureQr(device.target_id || device.client_id || "");
+}
+
+async function refresh() {
+  try {
+    const response = await fetch("/api/state", { cache: "no-store" });
+    render(await response.json());
+  } catch (err) {}
+}
+
+function collect() {
+  const data = {};
+  for (const el of fields) {
+    const key = el.dataset.key;
+    if (el.type === "checkbox") data[key] = el.checked;
+    else if (el.tagName === "SELECT") data[key] = el.value;
+    else if (el.type === "number") data[key] = el.value === "" ? 0 : Number(el.value);
+    else data[key] = el.value;
+  }
+  return data;
+}
+
+// ---------------------------------------------------------------- 事件方案
+function eventSettings() {
+  const data = {};
+  for (const card of document.querySelectorAll("[data-event-card]")) {
+    for (const el of card.querySelectorAll("[data-key]")) {
+      const key = el.dataset.key;
+      if (el.type === "checkbox") data[key] = el.checked;
+      else if (el.tagName === "SELECT") data[key] = el.value;
+      else if (el.type === "number") {
+        data[key] = el.value === "" ? 0 : Number(el.value);
+      } else data[key] = el.value;
+    }
+  }
+  return data;
+}
+
+function syncPresetButtons() {
+  const selected = !!$("presetSelect").value;
+  for (const id of ["presetLoad", "presetDelete", "presetExport"]) {
+    $(id).disabled = !selected;
+  }
+}
+
+function renderPresetOptions(state) {
+  const presets = state.event_presets || {};
+  const items = Array.isArray(presets.items) ? presets.items : [];
+  presetItems = items;
+  $("presetDir").textContent = presets.error
+    ? "读取失败：" + presets.error
+    : (presets.directory || "—");
+  $("presetDir").title = presets.directory || "";
+  const sig = items.map(item =>
+    [item.name, item.saved_at, item.event_count].join("|")).join("\n");
+  const select = $("presetSelect");
+  if (sig !== presetSig) {
+    presetSig = sig;
+    const current = select.value;
+    select.replaceChildren();
+    const none = document.createElement("option");
+    none.value = "";
+    none.textContent = items.length ? "选择已保存方案…" : "还没有保存的方案";
+    select.append(none);
+    for (const item of items) {
+      const option = document.createElement("option");
+      option.value = item.name;
+      const savedAt = (item.saved_at || "").slice(0, 16).replace("T", " ");
+      option.textContent = item.name + (savedAt ? " · " + savedAt : "");
+      select.append(option);
+    }
+    if (current && items.some(item => item.name === current)) {
+      select.value = current;
+    }
+  }
+  syncPresetButtons();
+}
+
+function selectPreset(name) {
+  const select = $("presetSelect");
+  if (Array.from(select.options).some(option => option.value === name)) {
+    select.value = name;
+  }
+  syncPresetButtons();
+}
+
+async function presetRequest(payload) {
+  const response = await fetch("/api/event-presets", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || response.status);
+  return data;
+}
+
+function presetWarning(name, prefix, warnings) {
+  if (warnings && warnings.length) {
+    toast(prefix + "「" + name + "」，部分参数已跳过：" + warnings[0]);
+  } else {
+    toast(prefix + "「" + name + "」");
+  }
+}
+
+async function loadPreset() {
+  const name = $("presetSelect").value;
+  if (!name) return;
+  if (dirty && !confirm("读取「" + name + "」会覆盖当前未保存的修改，继续？")) {
+    return;
+  }
+  try {
+    const state = await presetRequest({ action: "load", name });
+    dirty = false;
+    render(state);
+    selectPreset(name);
+    $("saveStatus").textContent = "已读取方案 " + new Date().toLocaleTimeString();
+    presetWarning(name, "已读取", state.warnings);
+  } catch (err) {
+    toast("读取失败：" + err.message);
+  }
+}
+
+async function savePreset() {
+  const name = $("presetName").value.trim();
+  if (!name) {
+    toast("请先填写方案名称");
+    $("presetName").focus();
+    return;
+  }
+  if (presetItems.some(item => item.name === name)
+      && !confirm("方案「" + name + "」已存在，覆盖？")) {
+    return;
+  }
+  try {
+    const state = await presetRequest({
+      action: "save", name, settings: eventSettings(),
+    });
+    render(state);
+    selectPreset(name);
+    $("presetName").value = "";
+    toast("方案已保存：" + name);
+  } catch (err) {
+    toast("保存失败：" + err.message);
+  }
+}
+
+async function deletePreset() {
+  const name = $("presetSelect").value;
+  if (!name) return;
+  if (!confirm("删除方案「" + name + "」？此操作不可撤销。")) return;
+  try {
+    const state = await presetRequest({ action: "delete", name });
+    render(state);
+    toast("已删除方案：" + name);
+  } catch (err) {
+    toast("删除失败：" + err.message);
+  }
+}
+
+async function exportPreset() {
+  const name = $("presetSelect").value;
+  if (!name) return;
+  try {
+    const data = await presetRequest({ action: "export", name });
+    const blob = new Blob(
+      [JSON.stringify(data.payload || {}, null, 2) + "\n"],
+      { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = name + ".json";
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    toast("已导出：" + name + ".json");
+  } catch (err) {
+    toast("导出失败：" + err.message);
+  }
+}
+
+async function importPresetFile(file) {
+  if (!file) return;
+  let payload;
+  try {
+    payload = JSON.parse(await file.text());
+  } catch (err) {
+    toast("导入失败：不是有效的 JSON 文件");
+    return;
+  }
+  const name = $("presetName").value.trim()
+    || file.name.replace(/\.json$/i, "");
+  if (!name) {
+    toast("请先填写方案名称");
+    return;
+  }
+  if (presetItems.some(item => item.name === name)
+      && !confirm("方案「" + name + "」已存在，覆盖？")) {
+    return;
+  }
+  try {
+    const state = await presetRequest({ action: "import", name, payload });
+    render(state);
+    selectPreset(name);
+    $("presetName").value = "";
+    presetWarning(name, "已导入", state.warnings);
+  } catch (err) {
+    toast("导入失败：" + err.message);
+  }
+}
+
+async function save(refreshQrAfter = false) {
+  const button = $("save");
+  button.disabled = true;
+  $("saveStatus").textContent = "保存中…";
+  try {
+    const response = await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ settings: collect() }),
+    });
+    const state = await response.json();
+    if (!response.ok) throw new Error(state.error || response.status);
+    dirty = false;
+    render(state);
+    $("saveStatus").textContent = "已保存 " + new Date().toLocaleTimeString();
+    if (refreshQrAfter === true) {
+      forceQrReload(state, "已保存并刷新二维码");
+    }
+    return true;
+  } catch (err) {
+    $("saveStatus").textContent = "保存失败";
+    toast("保存失败：" + err.message);
+    return false;
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function browseOpen(target = "telemetry_path") {
+  browseState.target = target;
+  browseState.selected = null;
+  const curve = target !== "telemetry_path";
+  $("browseTitle").textContent = curve ? "选择函数表 JSON" : "选择遥测文件";
+  $("browseHint").textContent = curve
+    ? "选择 base.json / hit.json 函数表文件"
+    : "选择 .jsonl，或进入游戏根目录下的 profile 后点「使用当前文件夹」";
+  $("browseUseDir").hidden = curve;
+  $("browseUseDir").disabled = curve;
+  $("browseModal").hidden = false;
+  let current = $(target).value.trim();
+  if (!current && curve) {
+    current = target === "base_curve_path"
+      ? curveResolved.base : curveResolved.hit;
+  }
+  await browse(current);
+}
+
+async function browse(path) {
+  try {
+    const response = await fetch("/api/browse?path=" + encodeURIComponent(path || ""));
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || response.status);
+    browseState.path = data.path || "";
+    browseState.parent = data.parent || "";
+    renderFiles(data.entries || []);
+  } catch (err) {
+    $("browseHint").textContent = "读取失败：" + err.message;
+  }
+}
+
+function renderFiles(entries) {
+  $("browsePath").textContent = browseState.path || "选择磁盘";
+  $("browseUp").disabled = !browseState.path;
+  $("browseChoose").disabled = !browseState.selected;
+  const list = $("fileList");
+  list.replaceChildren();
+  for (const entry of entries) {
+    const row = document.createElement("div");
+    row.className = "file-row" + (entry.is_dir ? " dir" : "") +
+      (entry.jsonl ? " jsonl" : "");
+    row.dataset.path = entry.path;
+    row.dataset.dir = entry.is_dir ? "1" : "0";
+    const name = document.createElement("span");
+    name.className = "file-name";
+    name.textContent = entry.name;
+    const size = document.createElement("span");
+    size.className = "hint";
+    size.textContent = entry.is_dir ? "" : Math.max(0, Math.round(entry.size / 1024)) + " KB";
+    row.append(name, size);
+    row.onclick = () => {
+      if (entry.is_dir) {
+        browse(entry.path);
+      } else {
+        browseState.selected = entry.path;
+        for (const other of list.querySelectorAll(".file-row")) {
+          other.classList.toggle("selected", other === row);
+        }
+        $("browseChoose").disabled = false;
+        $("browseHint").textContent = "已选择：" + entry.name;
+      }
+    };
+    list.append(row);
+  }
+}
+
+function markDirty() {
+  dirty = true;
+  $("saveStatus").textContent = "有未保存修改";
+  syncEventCards();
+}
+
+for (const el of fields) {
+  el.addEventListener("input", markDirty);
+  el.addEventListener("change", markDirty);
+}
+const overlayLockField = $("overlayLock");
+if (overlayLockField) {
+  // 锁定开关不进表单：切换即生效，保存按钮不参与。
+  overlayLockField.addEventListener("change", async () => {
+    const next = !!overlayLockField.checked;
+    const request = ++lockRequest;
+    pendingLock = next;
+    try {
+      const response = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ settings: { overlay_locked: next } }),
+      });
+      const state = await response.json();
+      if (!response.ok) throw new Error(state.error || response.status);
+      render(state);
+      toast(next ? "悬浮窗已锁定（鼠标穿透）" : "悬浮窗已解锁");
+    } catch (err) {
+      if (request === lockRequest) {
+        pendingLock = null;
+        overlayLockField.checked = !next;
+        toast("切换悬浮窗锁定失败：" + err.message);
+      }
+    }
+    setTimeout(() => {
+      if (request === lockRequest && pendingLock === next) pendingLock = null;
+    }, 3000);
+  });
+}
+const transportField = document.querySelector('[data-key="transport"]');
+if (transportField) {
+  transportField.addEventListener("change", syncTransportControls);
+}
+const refreshQrButton = $("refreshQr");
+if (refreshQrButton) {
+  refreshQrButton.addEventListener("click", saveAndRefreshQr);
+}
+for (const select of document.querySelectorAll("select[data-template]")) {
+  select.addEventListener("change", updateWavePreviews);
+}
+
+async function updateRequest(payload) {
+  const response = await fetch("/api/update", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const state = await response.json();
+  if (!response.ok) throw new Error(state.error || response.status);
+  render(state);
+  return state;
+}
+
+$("btnCheckUpdate").onclick = async () => {
+  $("btnCheckUpdate").disabled = true;
+  $("updateStatus").textContent = "检查中…";
+  try {
+    await updateRequest({ action: "check" });
+  } catch (err) {
+    $("btnCheckUpdate").disabled = false;
+    toast("检查更新失败：" + err.message);
+  }
+};
+
+$("btnUpdateNotes").onclick = async () => {
+  try {
+    await updateRequest({ action: "open_notes" });
+  } catch (err) {
+    toast("打开更新说明失败：" + err.message);
+  }
+};
+
+$("btnUpdateSkip").onclick = async () => {
+  const skipping = $("btnUpdateSkip").textContent !== "取消跳过";
+  try {
+    await updateRequest({
+      action: skipping ? "skip" : "unskip",
+      version: updateLatest,
+    });
+  } catch (err) {
+    toast("更新操作失败：" + err.message);
+  }
+};
+
+async function quitApp() {
+  $("saveStatus").textContent = "正在退出…";
+  try {
+    await fetch("/api/action", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "shutdown" }),
+    });
+  } catch (err) {}
+  if (!(window.pywebview && window.pywebview.api)) {
+    window.close();
+  }
+}
+
+async function copyObsUrl() {
+  const url = $("obsUrl").textContent;
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(url);
+    } else {
+      const area = document.createElement("textarea");
+      area.value = url;
+      area.style.position = "fixed";
+      area.style.opacity = "0";
+      document.body.append(area);
+      area.select();
+      const ok = document.execCommand("copy");
+      area.remove();
+      if (!ok) throw new Error("copy failed");
+    }
+    toast("OBS 地址已复制");
+  } catch (err) {
+    toast("复制失败，请手动选择地址");
+  }
+}
+
+$("btnTheme").onclick = toggleTheme;
+$("save").onclick = () => save();
+$("quit").onclick = quitApp;
+$("copyObs").onclick = copyObsUrl;
+$("browse").onclick = () => browseOpen("telemetry_path");
+$("presetSelect").onchange = syncPresetButtons;
+$("presetLoad").onclick = loadPreset;
+$("presetSave").onclick = savePreset;
+$("presetDelete").onclick = deletePreset;
+$("presetExport").onclick = exportPreset;
+$("presetImportBtn").onclick = () => $("presetFile").click();
+$("presetName").addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    savePreset();
+  }
+});
+$("presetFile").onchange = () => {
+  const input = $("presetFile");
+  const file = input.files && input.files[0];
+  input.value = "";
+  if (file) importPresetFile(file);
+};
+for (const button of document.querySelectorAll("[data-browse]")) {
+  button.onclick = () => browseOpen(button.dataset.browse);
+}
+$("browseClose").onclick = () => { $("browseModal").hidden = true; };
+$("browseUp").onclick = () => browse(browseState.parent);
+$("browseChoose").onclick = () => {
+  if (!browseState.selected) return;
+  $(browseState.target).value = browseState.selected;
+  $("browseModal").hidden = true;
+  markDirty();
+};
+$("browseUseDir").onclick = () => {
+  if (!browseState.path || browseState.target !== "telemetry_path") return;
+  $("telemetry_path").value = browseState.path;
+  $("browseModal").hidden = true;
+  markDirty();
+};
+
+applyTabs();
+applyTheme(currentTheme, false);
+
+// 浏览器模式下，关闭标签页仍然归零；pywebview 主窗口关闭由 Python 处理。
+let closingWindow = false;
+function zeroOnClose() {
+  if (closingWindow) return;
+  closingWindow = true;
+  const payload = JSON.stringify({ action: "ui_close" });
+  try {
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(
+        "/api/action",
+        new Blob([payload], { type: "application/json" }));
+    } else {
+      fetch("/api/action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+        keepalive: true,
+      });
+    }
+  } catch (err) {}
+}
+window.addEventListener("pagehide", (event) => {
+  if (event.persisted || APP_SHELL || internalNavigation) return;
+  if (window.pywebview && window.pywebview.api) return;
+  zeroOnClose();
+});
+window.addEventListener("beforeunload", () => {
+  if (APP_SHELL || internalNavigation) return;
+  if (window.pywebview && window.pywebview.api) return;
+  zeroOnClose();
+});
+
+refresh();
+setInterval(refresh, 1000);
+</script>
+</body>
+</html>

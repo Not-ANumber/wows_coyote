@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>wows_coyote</title>
+<script>
+try {
+  if (!document.documentElement.dataset.theme) {
+    const savedTheme = localStorage.getItem("wows-theme");
+    if (savedTheme === "light" || savedTheme === "dark") {
+      document.documentElement.dataset.theme = savedTheme;
+    }
+  }
+} catch (err) {}
+</script>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header>
+  <div class="brand"><span class="mark"></span>wows_coyote</div>
+  <div class="header-status">
+    <span class="status-pill" id="statusPill"><i class="dot"></i><span>连接中</span></span>
+  </div>
+  <div class="actions">
+    <button id="btnOverlay" class="btn ghost">悬浮窗</button>
+    <button id="btnTheme" class="btn ghost theme-btn" type="button"
+            title="切换亮色主题" aria-label="切换到亮色主题">☀</button>
+    <button id="btnEstop" class="btn estop">急停</button>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="主导航">
+  <a class="tab active" href="/" aria-current="page">控制台</a>
+  <a class="tab" id="tabSettings" href="/settings">设置</a>
+  <a class="tab" id="tabEvents" href="/events">事件</a>
+</nav>
+
+<main class="console">
+  <div class="banner" id="connectHint" hidden>
+    <b>未连接设备</b>
+    <span class="hint">支持 V3 / V4 App；在设置页选择连接方式后扫码。</span>
+    <button class="btn sm" id="btnConnect">去连接</button>
+  </div>
+
+  <div class="banner alert" id="estopBanner" hidden>
+    <b>输出已急停</b>
+    <span class="hint">恢复前不会产生任何刺激，确认安全后再继续。</span>
+    <button class="btn sm" id="btnRearm">恢复输出</button>
+  </div>
+
+  <div class="banner" id="updateBanner" hidden>
+    <b>发现新版本</b>
+    <span class="hint" id="updateBannerText"></span>
+    <button class="btn sm" id="btnUpdateGo">查看</button>
+    <button class="btn ghost sm" id="btnUpdateDismiss" aria-label="关闭">×</button>
+  </div>
+
+  <section class="card">
+    <div class="level a">
+      <div class="level-top">
+        <span class="ch">A</span>
+        <span class="effect" id="a-effect">静默</span>
+        <span class="num"><span id="a-total">0</span><small>%</small></span>
+      </div>
+      <div class="bar"><i id="a-bar"></i></div>
+    </div>
+    <div class="level b">
+      <div class="level-top">
+        <span class="ch">B</span>
+        <span class="effect" id="b-effect">静默</span>
+        <span class="num"><span id="b-total">0</span><small>%</small></span>
+      </div>
+      <div class="bar"><i id="b-bar"></i></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="battle-row">
+      <span class="battle-state" id="battle">等待游戏数据</span>
+      <span class="hp">HP <b id="hp">—</b></span>
+    </div>
+    <p class="inline-hint" id="telemetryHint" hidden>
+      未找到游戏数据 · <button type="button" class="link-btn" id="btnTelemetry">设置遥测</button>
+    </p>
+    <div class="battle-foot">
+      <div class="tags" id="tags"></div>
+      <button class="btn ghost sm" id="btnZero" title="清空波形并把强度归零，不锁定输出">输出归零</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2>最近事件</h2></div>
+    <div class="log" id="logs"></div>
+  </section>
+
+  <details class="safety">
+    <summary>
+      <b>安全使用</b>
+      <span>电极勿跨胸/颈部 · 首次低强度 · 不适立即急停</span>
+    </summary>
+    <ul>
+      <li>电极不跨胸，不贴颈部、头部、心脏区域或伤口。</li>
+      <li>使用合格的导电片，贴在肌肉厚实、干燥、无毛发的部位。</li>
+      <li>第一次使用保持低强度，有人看管，不要独自锁门或睡着使用。</li>
+      <li>不适、皮肤发红或异常刺痛时，立刻按 F12 或在 App 停止输出。</li>
+    </ul>
+  </details>
+
+  <p class="footnote" id="footnote">F12 全局急停 · 关闭窗口会自动归零</p>
+</main>
+
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const EVENT_LABELS = { base: "基础", hit: "受击", fire: "起火", flood: "进水", death: "死亡" };
+const APP_SHELL = new URLSearchParams(location.search).get("app") === "1";
+let toastTimer = null;
+let internalNavigation = false;
+let currentTheme = document.documentElement.dataset.theme === "light"
+  ? "light" : "dark";
+let nativeTheme = "";
+let pendingTheme = "";
+let themeRequest = 0;
+let updateLatest = "";
+
+const fmt = (v, digits = 0) => {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "0";
+  return digits ? n.toFixed(digits) : String(Math.round(n));
+};
+
+function toast(text) {
+  const el = $("toast");
+  el.textContent = text;
+  el.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.hidden = true; }, 2600);
+}
+
+function setStatus(text, state) {
+  const el = $("statusPill");
+  el.className = "status-pill " + (state || "");
+  el.querySelector("span").textContent = text;
+}
+
+function setBar(id, value) {
+  const v = Math.max(0, Math.min(100, Number(value) || 0));
+  $(id).style.width = v + "%";
+}
+
+function effectLabel(slot) {
+  if (!slot || !slot.owner) return "静默";
+  return EVENT_LABELS[slot.owner] || "运行中";
+}
+
+function setLevel(channel, slot, total) {
+  $(channel + "-total").textContent = fmt(total, 1);
+  setBar(channel + "-bar", total);
+  $(channel + "-effect").textContent = effectLabel(slot);
+}
+
+function makeTag(text, kind) {
+  const el = document.createElement("span");
+  el.className = "tag " + kind;
+  const dot = document.createElement("i");
+  dot.className = "dot";
+  const label = document.createElement("span");
+  label.textContent = text;
+  el.append(dot, label);
+  return el;
+}
+
+function renderTags(host) {
+  const box = $("tags");
+  box.replaceChildren();
+  if (host.burning) {
+    box.append(makeTag("起火" + (host.fires ? " ×" + host.fires : ""), "fire"));
+  }
+  if (host.flooding) {
+    box.append(makeTag("进水" + (host.floods ? " ×" + host.floods : ""), "flood"));
+  }
+}
+
+function renderLogs(logs) {
+  const box = $("logs");
+  box.replaceChildren();
+  if (!logs.length) {
+    const empty = document.createElement("span");
+    empty.className = "empty";
+    empty.textContent = "暂无事件";
+    box.append(empty);
+    return;
+  }
+  for (const row of logs.slice(0, 6)) {
+    const div = document.createElement("div");
+    const time = document.createElement("span");
+    time.className = "log-time";
+    time.textContent = row.t || "";
+    const text = document.createElement("span");
+    text.textContent = row.text || "";
+    div.append(time, text);
+    box.append(div);
+  }
+}
+
+function render(state) {
+  const host = state.host || {};
+  const device = state.device || {};
+  const telemetry = state.telemetry || {};
+  const totals = host.totals || { a: 0, b: 0 };
+  const scheduler = host.scheduler || {};
+  const serverTheme = (state.config && state.config.theme) || "dark";
+  if (pendingTheme) {
+    if (serverTheme === pendingTheme) {
+      pendingTheme = "";
+      applyTheme(serverTheme);
+    }
+  } else {
+    applyTheme(serverTheme);
+  }
+
+  if (device.muted) setStatus("输出已急停", "bad");
+  else if (!device.connected) setStatus("设备未连接", "");
+  else setStatus("已连接", "ok");
+
+  $("connectHint").hidden = !!device.connected;
+  $("estopBanner").hidden = !device.muted;
+
+  const update = state.update || {};
+  updateLatest = update.latest || "";
+  let updateDismissed = "";
+  try {
+    updateDismissed = sessionStorage.getItem("wows-update-dismissed") || "";
+  } catch (err) {}
+  const showUpdate = !!update.available && !update.skipped
+    && updateDismissed !== (update.latest || "");
+  $("updateBanner").hidden = !showUpdate;
+  if (showUpdate) {
+    $("updateBannerText").textContent = "v" + update.latest + " 可用";
+  }
+
+  const outputOn = !!device.connected && !device.muted;
+  setLevel("a", outputOn ? scheduler.a : null, outputOn ? totals.a : 0);
+  setLevel("b", outputOn ? scheduler.b : null, outputOn ? totals.b : 0);
+
+  $("battle").textContent = host.dead ? "已阵亡"
+    : host.battle_active ? (host.alive ? "战斗中" : "战斗结束")
+    : (telemetry.found_once ? "等待进入战斗" : "等待游戏数据");
+  $("battle").className = "battle-state" + (host.dead ? " dead" : "");
+  $("hp").textContent = (host.hp_pct === null || host.hp_pct === undefined)
+    ? "—" : fmt(host.hp_pct, 1) + "%";
+  $("telemetryHint").hidden = !!telemetry.found_once;
+
+  renderTags(host);
+  renderLogs(state.logs || []);
+
+  const hotkeys = state.hotkeys || {};
+  const footnote = [];
+  if (hotkeys.estop) footnote.push(hotkeys.estop + " 全局急停");
+  if (hotkeys.overlay_lock) footnote.push(hotkeys.overlay_lock + " 锁定悬浮窗");
+  footnote.push("关闭窗口会自动归零");
+  $("footnote").textContent = footnote.join(" · ");
+}
+
+function appApi() {
+  return (window.pywebview && window.pywebview.api) ? window.pywebview.api : null;
+}
+
+function applyTheme(theme, notifyNative = true) {
+  const value = theme === "light" ? "light" : "dark";
+  const changed = document.documentElement.dataset.theme !== value;
+  currentTheme = value;
+  if (changed) {
+    document.documentElement.dataset.theme = value;
+    try { localStorage.setItem("wows-theme", value); } catch (err) {}
+  }
+  const button = $("btnTheme");
+  if (button) {
+    const label = value === "light" ? "切换暗色主题" : "切换亮色主题";
+    button.textContent = value === "light" ? "☾" : "☀";
+    button.title = label;
+    button.setAttribute("aria-label", label);
+  }
+  if (!notifyNative || nativeTheme === value) return;
+  const api = appApi();
+  if (!api || !api.set_theme) return;
+  nativeTheme = value;
+  try {
+    Promise.resolve(api.set_theme(value)).catch(() => {});
+  } catch (err) {}
+}
+
+async function toggleTheme() {
+  const next = currentTheme === "light" ? "dark" : "light";
+  const request = ++themeRequest;
+  pendingTheme = next;
+  applyTheme(next);
+  try {
+    const response = await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ settings: { theme: next } }),
+    });
+    if (!response.ok) throw new Error(response.status);
+  } catch (err) {
+    if (request === themeRequest) {
+      pendingTheme = "";
+      toast("主题已切换，但未能保存");
+    }
+  }
+  // 等下一次 /api/state 确认服务端已写入；避免旧轮询把界面切回去。
+  setTimeout(() => {
+    if (request === themeRequest && pendingTheme === next) pendingTheme = "";
+  }, 5000);
+}
+
+function fallbackSettings() {
+  internalNavigation = true;
+  location.href = APP_SHELL ? "/settings?app=1" : "/settings";
+}
+
+function fallbackEvents() {
+  internalNavigation = true;
+  location.href = APP_SHELL ? "/events?app=1" : "/events";
+}
+
+function openSettings() {
+  const api = appApi();
+  if (api && api.open_settings) {
+    try {
+      Promise.resolve(api.open_settings())
+        .then((ok) => { if (ok === false) fallbackSettings(); })
+        .catch(fallbackSettings);
+    } catch (err) {
+      fallbackSettings();
+    }
+    return;
+  }
+  fallbackSettings();
+}
+
+function openEvents() {
+  const api = appApi();
+  if (api && api.open_events) {
+    try {
+      Promise.resolve(api.open_events())
+        .then((ok) => { if (ok === false) fallbackEvents(); })
+        .catch(fallbackEvents);
+    } catch (err) {
+      fallbackEvents();
+    }
+    return;
+  }
+  fallbackEvents();
+}
+
+function openOverlay() {
+  const api = appApi();
+  if (api && api.open_overlay) {
+    api.open_overlay();
+    return;
+  }
+  window.open("/overlay", "wows-overlay", "width=400,height=260");
+}
+
+async function postAction(action) {
+  try {
+    const response = await fetch("/api/action", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action }),
+    });
+    const state = await response.json();
+    if (!response.ok) throw new Error(state.error || response.status);
+    render(state);
+  } catch (err) {
+    console.error(err);
+    toast("操作失败：" + err.message);
+  }
+}
+
+async function refresh() {
+  try {
+    const response = await fetch("/api/state", { cache: "no-store" });
+    render(await response.json());
+  } catch (err) {
+    // 服务暂时不可用时保留上一帧。
+  }
+}
+
+$("tabSettings").onclick = (event) => {
+  event.preventDefault();
+  openSettings();
+};
+$("tabEvents").onclick = (event) => {
+  event.preventDefault();
+  openEvents();
+};
+$("btnConnect").onclick = openSettings;
+$("btnTelemetry").onclick = openSettings;
+$("btnOverlay").onclick = openOverlay;
+$("btnTheme").onclick = toggleTheme;
+$("btnEstop").onclick = () => postAction("estop");
+$("btnRearm").onclick = () => postAction("rearm");
+$("btnZero").onclick = () => postAction("zero");
+$("btnUpdateGo").onclick = openSettings;
+$("btnUpdateDismiss").onclick = () => {
+  try {
+    if (updateLatest) {
+      sessionStorage.setItem("wows-update-dismissed", updateLatest);
+    }
+  } catch (err) {}
+  $("updateBanner").hidden = true;
+};
+
+// 关闭主控制台/刷新时归零；sendBeacon 在页面卸载时仍尽量送达。
+let closing = false;
+function zeroOnClose() {
+  if (closing) return;
+  closing = true;
+  const payload = JSON.stringify({ action: "ui_close" });
+  try {
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(
+        "/api/action",
+        new Blob([payload], { type: "application/json" }));
+    } else {
+      fetch("/api/action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+        keepalive: true,
+      });
+    }
+  } catch (err) {}
+}
+function inAppShell() {
+  return APP_SHELL || !!(window.pywebview && window.pywebview.api);
+}
+
+// 浏览器模式：关闭/刷新标签页时归零。
+// pywebview 主窗口：由 Python 在窗口关闭时归零，避免刷新页面误触发急停。
+window.addEventListener("pagehide", (event) => {
+  if (!event.persisted && !inAppShell() && !internalNavigation) zeroOnClose();
+});
+window.addEventListener("beforeunload", () => {
+  if (!inAppShell() && !internalNavigation) zeroOnClose();
+});
+
+applyTheme(currentTheme, false);
+refresh();
+setInterval(refresh, 200);
+</script>
+</body>
+</html>

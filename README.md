@@ -36,6 +36,27 @@ standalone。支持 V4 Relay（DG-LAB 4）和 V3 Socket（郊狼 App）。
 4. 选择 V4 Relay 或 V3 Socket，扫码配对；
 5. 首次使用先在 App 内把通道上限调低，`F12` 为全局急停。
 
+## 源码与构建
+
+本仓库包含 standalone 1.0.0 的 GPL-3.0 源码：
+
+- `standalone/`：宿主、调度器、V3/V4 传输、更新检查、UI、overlay；
+- `wows_coyote/`：共享事件引擎、函数表、配置 schema、v2 预设；
+- `tools/`：构建、审计、校验值和更新清单工具；
+- `installer/`：Inno Setup 安装包脚本；
+- `tests/`：standalone / 共享引擎测试；
+- `docs/`：初次使用、V4、界面定稿和发布文档。
+
+```bash
+py -3.13 -m pip install -r standalone/requirements.txt
+py -3.13 -m pip install pyinstaller
+py -3.13 tools/build_windows.py
+```
+
+安装包编译见 `installer/README.md`；发布/审计流程见
+`docs/standalone发布指南.md`。许可与对应源码见 `LICENSE`、
+`THIRD_PARTY.md`、`SOURCE_OFFER.md`。
+
 ## 更新
 
 1.0.0 是首个稳定版；0.1.1 起支持应用内更新提示（仅提示，不自动下载/安装）。

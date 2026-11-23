@@ -1,0 +1,314 @@
+{
+  "id": "wows_coyote",
+  "name": "战舰世界 × 郊狼",
+  "version": "2.9.2",
+  "sdk": "1",
+  "author": "wowsDG",
+  "description": "读取 ExportShipStatus 遥测，按基础/受击/起火/进水/死亡五类事件做每通道强度加法混合，并按优先级播放波形。",
+  "entry": "main.py",
+  "capabilities": {
+    "startup_check": true
+  },
+  "config_schema": [
+    {
+      "section": "📂 数据",
+      "fields": [
+        {
+          "key": "preset_file_path",
+          "type": "path",
+          "label": "预设文件",
+          "default": "wows_preset_v2.json",
+          "description": "插件目录内的 v2 预设；可改成自己的路径"
+        },
+        {
+          "key": "telemetry_path",
+          "type": "path",
+          "label": "遥测文件",
+          "default": "",
+          "description": "路径无效或留空时自动查找并回填；也可填游戏根目录、profile 目录或完整文件路径"
+        },
+        {
+          "key": "polling_rate",
+          "type": "number",
+          "label": "读取间隔 (ms)",
+          "default": 100,
+          "min": 50,
+          "max": 2000,
+          "step": 50
+        },
+        {
+          "key": "telemetry_timeout_s",
+          "type": "number",
+          "label": "超时清零 (秒)",
+          "default": 60,
+          "min": 10,
+          "max": 600,
+          "step": 5,
+          "description": "连续无遥测超过此时间就结束本局"
+        },
+        {
+          "key": "trigger_import",
+          "type": "bool",
+          "label": "导入预设",
+          "default": false
+        },
+        {
+          "key": "trigger_export",
+          "type": "bool",
+          "label": "导出预设",
+          "default": false
+        },
+        {
+          "key": "debug_log",
+          "type": "bool",
+          "label": "调试日志",
+          "default": false
+        }
+      ]
+    },
+    {
+      "section": "🩸 基础",
+      "fields": [
+        {
+          "key": "base_enable",
+          "type": "bool",
+          "label": "启用基础",
+          "default": true,
+          "description": "开启后按血量输出强度和波形；波形留空则只输出强度"
+        },
+        {
+          "key": "base_channel",
+          "type": "channel",
+          "label": "通道",
+          "default": "both"
+        },
+        {
+          "key": "base_min",
+          "type": "number",
+          "label": "满血强度 (%)",
+          "default": 10,
+          "min": 0,
+          "max": 100,
+          "step": 1
+        },
+        {
+          "key": "base_max",
+          "type": "number",
+          "label": "空血强度 (%)",
+          "default": 40,
+          "min": 0,
+          "max": 100,
+          "step": 1
+        },
+        {
+          "key": "base_curve_enable",
+          "type": "bool",
+          "label": "使用函数表 (base.json)",
+          "default": false,
+          "description": "读取插件目录下的 base.json；关闭时使用满血/空血线性公式"
+        },
+        {
+          "key": "base_preset",
+          "type": "preset",
+          "label": "波形",
+          "default": "",
+          "description": "为空时不播放基础波形"
+        }
+      ]
+    },
+    {
+      "section": "💥 受击",
+      "fields": [
+        {
+          "key": "hit_enable",
+          "type": "bool",
+          "label": "启用",
+          "default": true
+        },
+        {
+          "key": "hit_channel",
+          "type": "channel",
+          "label": "通道",
+          "default": "both"
+        },
+        {
+          "key": "hit_strength",
+          "type": "number",
+          "label": "最大强度 (%)",
+          "default": 40,
+          "min": 0,
+          "max": 100,
+          "step": 1,
+          "description": "损失达到满强度损失时使用"
+        },
+        {
+          "key": "hit_threshold_pct",
+          "type": "number",
+          "label": "触发损失 (%)",
+          "default": 2,
+          "min": 0,
+          "max": 100,
+          "step": 0.5,
+          "description": "低于此损失不触发"
+        },
+        {
+          "key": "hit_full_pct",
+          "type": "number",
+          "label": "满强度损失 (%)",
+          "default": 8,
+          "min": 0,
+          "max": 100,
+          "step": 0.5,
+          "description": "达到此损失时强度拉满"
+        },
+        {
+          "key": "hit_duration_s",
+          "type": "duration",
+          "label": "强度/波形时长 (秒，最多20)",
+          "default": 2.0,
+          "min": 0.1,
+          "max": 20.0,
+          "description": "强度和波形使用同一时长，最多 20 秒"
+        },
+        {
+          "key": "hit_curve_enable",
+          "type": "bool",
+          "label": "使用函数表 (hit.json)",
+          "default": false,
+          "description": "读取插件目录下的 hit.json；按窗口损失百分比插值，关闭时使用强度/满强度损失公式"
+        },
+        {
+          "key": "hit_preset",
+          "type": "preset",
+          "label": "波形",
+          "default": ""
+        }
+      ]
+    },
+    {
+      "section": "🔥 起火",
+      "fields": [
+        {
+          "key": "fire_enable",
+          "type": "bool",
+          "label": "启用",
+          "default": true
+        },
+        {
+          "key": "fire_channel",
+          "type": "channel",
+          "label": "通道",
+          "default": "both"
+        },
+        {
+          "key": "fire_strength",
+          "type": "number",
+          "label": "首层强度 (%)",
+          "default": 12,
+          "min": 0,
+          "max": 100,
+          "step": 1
+        },
+        {
+          "key": "fire_stack_add",
+          "type": "number",
+          "label": "每层追加 (%)",
+          "default": 6,
+          "min": 0,
+          "max": 100,
+          "step": 1
+        },
+        {
+          "key": "fire_preset",
+          "type": "preset",
+          "label": "波形",
+          "default": "",
+          "description": "燃烧期间持续循环"
+        }
+      ]
+    },
+    {
+      "section": "🌊 进水",
+      "fields": [
+        {
+          "key": "flood_enable",
+          "type": "bool",
+          "label": "启用",
+          "default": true
+        },
+        {
+          "key": "flood_channel",
+          "type": "channel",
+          "label": "通道",
+          "default": "both"
+        },
+        {
+          "key": "flood_strength",
+          "type": "number",
+          "label": "首层强度 (%)",
+          "default": 12,
+          "min": 0,
+          "max": 100,
+          "step": 1
+        },
+        {
+          "key": "flood_stack_add",
+          "type": "number",
+          "label": "每层追加 (%)",
+          "default": 6,
+          "min": 0,
+          "max": 100,
+          "step": 1
+        },
+        {
+          "key": "flood_preset",
+          "type": "preset",
+          "label": "波形",
+          "default": "",
+          "description": "进水期间持续循环"
+        }
+      ]
+    },
+    {
+      "section": "💀 死亡",
+      "fields": [
+        {
+          "key": "death_enable",
+          "type": "bool",
+          "label": "启用",
+          "default": true
+        },
+        {
+          "key": "death_channel",
+          "type": "channel",
+          "label": "通道",
+          "default": "both"
+        },
+        {
+          "key": "death_strength",
+          "type": "number",
+          "label": "强度 (%)",
+          "default": 60,
+          "min": 0,
+          "max": 100,
+          "step": 1
+        },
+        {
+          "key": "death_duration_s",
+          "type": "duration",
+          "label": "强度/波形时长 (秒，最多20)",
+          "default": 4.0,
+          "min": 0.1,
+          "max": 20.0,
+          "description": "强度和波形使用同一时长，最多 20 秒"
+        },
+        {
+          "key": "death_preset",
+          "type": "preset",
+          "label": "波形",
+          "default": ""
+        }
+      ]
+    }
+  ]
+}

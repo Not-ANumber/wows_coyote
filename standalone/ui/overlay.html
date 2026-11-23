@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>overlay · wows_coyote</title>
+<script>
+try {
+  if (!document.documentElement.dataset.theme) {
+    const savedTheme = localStorage.getItem("wows-theme");
+    if (savedTheme === "light" || savedTheme === "dark") {
+      document.documentElement.dataset.theme = savedTheme;
+    }
+  }
+} catch (err) {}
+</script>
+<style>
+  :root {
+    --yellow: #c9a400;
+    --yellow-2: #ddb72e;
+    --yellow-ink: var(--yellow);
+    --yellow-glow: rgba(201, 164, 0, .5);
+    --yellow-line: rgba(201, 164, 0, .35);
+    --obs-alpha: .86;
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --yellow: #d6a800;
+    --yellow-2: #b89000;
+    --yellow-ink: #7d6200;
+    --yellow-glow: rgba(160, 125, 0, .3);
+    --yellow-line: rgba(140, 108, 0, .42);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: transparent;
+    font: 12px/1.4 "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    color: #f2efe4;
+    user-select: none;
+  }
+  body {
+    height: 100%;
+    padding: 0;
+  }
+  .ov {
+    -webkit-app-region: drag;
+    position: relative;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    gap: 8px;
+    width: 100%;
+    height: 100%;
+    padding: 12px 12px;
+    border: 0;
+    border-radius: 0;
+    background: #0a0a07;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04);
+    overflow: hidden;
+  }
+  .ov.muted { box-shadow: inset 0 0 0 1px rgba(255, 91, 77, .55); }
+  .ov.locked { outline: 1px dashed var(--yellow-line); outline-offset: -1px; }
+  body.obs { padding: 8px; }
+  body.obs .ov {
+    border: 1px solid #3b3b2e;
+    border-radius: 14px;
+    background: rgba(10, 10, 7, var(--obs-alpha));
+    box-shadow: 0 8px 26px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .04);
+  }
+  body.obs .top .icon,
+  body.obs .top .close,
+  body.obs .foot button { display: none; }
+  body.obs .foot .spacer { display: none; }
+  body.obs .foot { justify-content: center; }
+  .top { display: flex; align-items: center; gap: 7px; min-width: 0; }
+  .dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: #6d695b; }
+  .dot.ok { background: var(--yellow); box-shadow: 0 0 8px var(--yellow-glow); }
+  .dot.bad { background: #ff5b4d; box-shadow: 0 0 8px rgba(255, 91, 77, .55); }
+  #status { color: #e9e5d6; font-weight: 600; white-space: nowrap; }
+  .meta {
+    min-width: 0;
+    margin-left: 2px;
+    color: #948f7d;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .spacer { flex: 1; }
+  button {
+    -webkit-app-region: no-drag;
+    padding: 4px 9px;
+    border: 1px solid #3b3b2e;
+    border-radius: 8px;
+    background: #191915;
+    color: #e9e5d6;
+    font: inherit;
+    cursor: pointer;
+  }
+  button:hover { border-color: var(--yellow-line); }
+  button.icon {
+    padding: 3px 7px;
+    border-color: transparent;
+    background: transparent;
+    color: #948f7d;
+    font-size: 13px;
+  }
+  button.icon:hover { color: #f2efe4; background: #191915; }
+  button.icon.on { color: var(--yellow-ink); background: #191915; }
+  .locked-hint {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 16px;
+    background: rgba(8, 8, 6, .62);
+    color: #f2efe4;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+    pointer-events: none;
+  }
+  .locked-hint[hidden] { display: none; }
+  button.close {
+    padding: 3px 8px;
+    border-color: rgba(255, 255, 255, .16);
+    background: transparent;
+    color: #d9d4c4;
+  }
+  button.close:hover { border-color: var(--yellow-line); color: #f2efe4; }
+  button.estop {
+    padding: 4px 11px;
+    border-color: var(--yellow);
+    background: var(--yellow);
+    color: #0b0b06;
+    font-weight: 800;
+  }
+  button.estop:hover { background: var(--yellow-2); }
+  button.rearm { border-color: var(--yellow-line); color: var(--yellow-ink); }
+  .cluster {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    min-height: 0;
+  }
+  .gauge {
+    flex: none;
+    height: 100%;
+    max-height: 122px;
+    aspect-ratio: 1 / 1;
+    min-width: 0;
+  }
+  .gauge svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .gauge text {
+    font-family: inherit;
+    font-variant-numeric: tabular-nums;
+  }
+  .gauge .track {
+    fill: none;
+    stroke: #25251d;
+    stroke-width: 7;
+    stroke-linecap: round;
+  }
+  .gauge .fill {
+    fill: none;
+    stroke: var(--yellow);
+    stroke-width: 7;
+    stroke-linecap: round;
+    stroke-dasharray: 100;
+    stroke-dashoffset: 100;
+    transition: stroke-dashoffset .18s linear;
+  }
+  .gauge.b .fill { stroke: #d6cfb8; }
+  .gauge-ch {
+    text-anchor: middle;
+    dominant-baseline: middle;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .12em;
+    fill: #948f7d;
+  }
+  .gauge.a .gauge-ch { fill: var(--yellow-ink); }
+  .gauge-pct {
+    text-anchor: middle;
+    dominant-baseline: middle;
+    font-size: 30px;
+    font-weight: 700;
+    fill: #f2efe4;
+  }
+  .gauge.a .gauge-pct { fill: var(--yellow-ink); }
+  .gauge-raw {
+    text-anchor: middle;
+    dominant-baseline: middle;
+    font-size: 11px;
+    font-weight: 600;
+    fill: #948f7d;
+  }
+  .bottom {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+  }
+  .foot { display: flex; align-items: center; gap: 8px; }
+  .foot .hint { color: #948f7d; white-space: nowrap; }
+  .detail {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    overflow: hidden;
+    color: #948f7d;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+  .detail[hidden] { display: none; }
+  .detail-label {
+    flex: none;
+    color: #6d695b;
+    font-size: 10px;
+    letter-spacing: .08em;
+  }
+  .detail-events {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .detail-ev {
+    flex: none;
+    padding: 1px 6px;
+    border: 1px solid #3b3b2e;
+    border-radius: 999px;
+    background: #14140f;
+    color: #e9e5d6;
+    font-size: 10px;
+    line-height: 1.35;
+  }
+  .detail-ev.base { color: var(--yellow-ink); }
+  .detail-ev.fire { color: #e0c066; border-color: var(--yellow-line); }
+  .detail-ev.flood { color: #a8c3cb; border-color: rgba(127, 163, 176, .32); }
+  .detail-ev.death { color: #ff5b4d; border-color: rgba(255, 91, 77, .4); }
+  .detail-empty { color: #6d695b; }
+
+  /* 亮色主题：卡片底色变浅，强调色改用更深的暗金，保证小字号可读。 */
+  :root[data-theme="light"] body { color: #1c1b16; }
+  :root[data-theme="light"] .ov {
+    background: #f7f1e3;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .65);
+  }
+  :root[data-theme="light"] .ov.muted {
+    box-shadow: inset 0 0 0 1px rgba(179, 38, 42, .55);
+  }
+  :root[data-theme="light"] body.obs .ov {
+    border-color: #d8cfba;
+    background: rgba(250, 246, 238, var(--obs-alpha));
+    box-shadow: 0 8px 26px rgba(80, 70, 45, .18),
+                inset 0 1px 0 rgba(255, 255, 255, .65);
+  }
+  :root[data-theme="light"] #status { color: #1c1b16; }
+  :root[data-theme="light"] .meta,
+  :root[data-theme="light"] .foot .hint { color: #6f6859; }
+  :root[data-theme="light"] button {
+    border-color: #c7bda7;
+    background: #f4eee1;
+    color: #1c1b16;
+  }
+  :root[data-theme="light"] button:hover { border-color: var(--yellow-line); }
+  :root[data-theme="light"] button.icon { color: #6f6859; }
+  :root[data-theme="light"] button.icon:hover {
+    color: #1c1b16;
+    background: #ebe3d2;
+  }
+  :root[data-theme="light"] button.icon.on {
+    color: var(--yellow-ink);
+    background: #ebe3d2;
+  }
+  :root[data-theme="light"] .locked-hint {
+    background: rgba(250, 246, 238, .72);
+    color: #1c1b16;
+  }
+  :root[data-theme="light"] button.close {
+    border-color: rgba(28, 27, 22, .18);
+    color: #4b463c;
+  }
+  :root[data-theme="light"] button.close:hover { color: #1c1b16; }
+  :root[data-theme="light"] button.estop {
+    border-color: var(--yellow);
+    background: var(--yellow);
+    color: #0b0b06;
+  }
+  :root[data-theme="light"] button.estop:hover { background: var(--yellow-2); }
+  :root[data-theme="light"] button.rearm { color: var(--yellow-ink); }
+  :root[data-theme="light"] .dot { background: #8a8270; }
+  :root[data-theme="light"] .dot.bad {
+    background: #b3262a;
+    box-shadow: 0 0 8px rgba(179, 38, 42, .45);
+  }
+  :root[data-theme="light"] .gauge .track { stroke: #e3dbc8; }
+  :root[data-theme="light"] .gauge.b .fill { stroke: #4b463c; }
+  :root[data-theme="light"] .gauge-pct { fill: #1c1b16; }
+  :root[data-theme="light"] .gauge-raw,
+  :root[data-theme="light"] .gauge-ch { fill: #6f6859; }
+  :root[data-theme="light"] .gauge.a .gauge-ch,
+  :root[data-theme="light"] .gauge.a .gauge-pct { fill: var(--yellow-ink); }
+  :root[data-theme="light"] .detail { color: #6f6859; }
+  :root[data-theme="light"] .detail-label { color: #8a8272; }
+  :root[data-theme="light"] .detail-ev {
+    border-color: #d8cfba;
+    background: #f4eee1;
+    color: #1c1b16;
+  }
+  :root[data-theme="light"] .detail-ev.base { color: var(--yellow-ink); }
+  :root[data-theme="light"] .detail-ev.fire {
+    color: #7d6200;
+    border-color: var(--yellow-line);
+  }
+  :root[data-theme="light"] .detail-ev.flood {
+    color: #4f6f78;
+    border-color: rgba(90, 130, 140, .35);
+  }
+  :root[data-theme="light"] .detail-ev.death {
+    color: #b3262a;
+    border-color: rgba(179, 38, 42, .4);
+  }
+  :root[data-theme="light"] .detail-empty { color: #8a8272; }
+</style>
+</head>
+<body>
+<div class="ov" id="ov">
+  <div class="top">
+    <span class="dot" id="dot"></span>
+    <span id="status">连接中</span>
+    <span class="meta" id="battle">等待</span>
+    <span class="spacer"></span>
+    <button id="btnLock" class="icon" title="锁定悬浮窗（鼠标穿透）" hidden>🔓</button>
+    <button id="btnSettings" class="icon" title="设置">⚙</button>
+    <button id="btnClose" class="close" title="关闭悬浮窗">关闭</button>
+  </div>
+  <div class="cluster">
+    <div class="gauge a" id="gaugeA" role="img" aria-label="A 通道 0%"
+         title="百分比 / 实际强度(通道上限)">
+      <svg viewBox="0 0 120 120" aria-hidden="true">
+        <path class="track" d="M 27.47 92.53 A 46 46 0 1 1 92.53 92.53"/>
+        <path class="fill" id="a-arc" pathLength="100"
+              d="M 27.47 92.53 A 46 46 0 1 1 92.53 92.53"/>
+        <text class="gauge-ch" x="60" y="37">A</text>
+        <text class="gauge-pct" id="a-total" x="60" y="64">0%</text>
+        <text class="gauge-raw" id="a-raw" x="60" y="86">0/200</text>
+      </svg>
+    </div>
+    <div class="gauge b" id="gaugeB" role="img" aria-label="B 通道 0%"
+         title="百分比 / 实际强度(通道上限)">
+      <svg viewBox="0 0 120 120" aria-hidden="true">
+        <path class="track" d="M 27.47 92.53 A 46 46 0 1 1 92.53 92.53"/>
+        <path class="fill" id="b-arc" pathLength="100"
+              d="M 27.47 92.53 A 46 46 0 1 1 92.53 92.53"/>
+        <text class="gauge-ch" x="60" y="37">B</text>
+        <text class="gauge-pct" id="b-total" x="60" y="64">0%</text>
+        <text class="gauge-raw" id="b-raw" x="60" y="86">0/200</text>
+      </svg>
+    </div>
+  </div>
+  <div class="bottom">
+    <div class="detail" id="detail" hidden></div>
+    <div class="foot">
+      <span class="hint" id="hp">HP —</span>
+      <span class="spacer"></span>
+      <button id="btnRearm" class="rearm">恢复</button>
+      <button id="btnStop" class="estop">急停</button>
+    </div>
+  </div>
+  <div class="locked-hint" id="lockedHint" hidden></div>
+</div>
+<script>
+// 窗口模式使用 ?app=1：保持真透明。
+// 普通浏览器小窗无法透明，用深色底避免圆角外露白边。
+const APP_SHELL = new URLSearchParams(location.search).get("app") === "1";
+const OBS_MODE = location.pathname.endsWith("/obs") ||
+  new URLSearchParams(location.search).get("obs") === "1";
+if (OBS_MODE) document.body.classList.add("obs");
+let currentTheme = document.documentElement.dataset.theme === "light"
+  ? "light" : "dark";
+let fallbackBackground = !APP_SHELL && !OBS_MODE;
+let nativeOpacity = null;
+let detailSignature = "";
+let overlayLocked = false;
+let nativeLock = null;
+let lastHotkeys = {};
+let lockedHintTimer = null;
+
+function applyTheme(theme) {
+  const value = theme === "light" ? "light" : "dark";
+  const changed = document.documentElement.dataset.theme !== value;
+  currentTheme = value;
+  if (changed) {
+    document.documentElement.dataset.theme = value;
+    try { localStorage.setItem("wows-theme", value); } catch (err) {}
+  }
+  if (fallbackBackground && changed) {
+    document.documentElement.style.background =
+      value === "light" ? "#f3eee2" : "#0a0a07";
+  }
+}
+
+function opacityPercent(value, low, fallback) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.max(low, Math.min(100, Math.round(number)));
+}
+
+function applyOpacity(config) {
+  const obs = opacityPercent(config.obs_opacity, 20, 86);
+  document.documentElement.style.setProperty(
+    "--obs-alpha", (obs / 100).toFixed(2));
+  if (OBS_MODE) return;
+  const overlay = opacityPercent(config.overlay_opacity, 30, 100);
+  const api = window.pywebview && window.pywebview.api;
+  if (!api || !api.set_overlay_opacity || nativeOpacity === overlay) return;
+  nativeOpacity = overlay;
+  try {
+    Promise.resolve(api.set_overlay_opacity(overlay))
+      .then((ok) => { if (ok === false) nativeOpacity = null; })
+      .catch(() => { nativeOpacity = null; });
+  } catch (err) {
+    nativeOpacity = null;
+  }
+}
+
+function flashLockHint() {
+  const hint = $("lockedHint");
+  if (!hint) return;
+  const key = String((lastHotkeys || {}).overlay_lock || "").trim();
+  hint.textContent = "已锁定 · 鼠标点击穿透" +
+    (key ? "（" + key + " 解锁）" : "（主窗口设置页解锁）");
+  hint.hidden = false;
+  clearTimeout(lockedHintTimer);
+  lockedHintTimer = setTimeout(() => { hint.hidden = true; }, 2200);
+}
+
+function applyLock(config) {
+  const locked = !!config.overlay_locked;
+  const api = window.pywebview && window.pywebview.api;
+  // 浏览器/OBS 没有原生窗口，锁定开关只在 pywebview 悬浮窗里出现。
+  const supported = !OBS_MODE && !!api && !!api.set_overlay_locked;
+  overlayLocked = locked;
+  const button = $("btnLock");
+  if (button) {
+    button.hidden = !supported;
+    if (supported) {
+      button.textContent = locked ? "🔒" : "🔓";
+      button.classList.toggle("on", locked);
+      button.title = locked
+        ? "已锁定：鼠标点击穿透（用热键或设置页解锁）"
+        : "锁定悬浮窗（鼠标穿透，不再接收点击）";
+    }
+  }
+  $("ov").classList.toggle("locked", supported && locked);
+  if (!supported || nativeLock === locked) return;
+  nativeLock = locked;
+  if (locked) flashLockHint();
+  try {
+    Promise.resolve(api.set_overlay_locked(locked))
+      .then((ok) => { if (ok === false) nativeLock = null; })
+      .catch(() => { nativeLock = null; });
+  } catch (err) {
+    nativeLock = null;
+  }
+}
+
+if (fallbackBackground) {
+  document.documentElement.style.background =
+    currentTheme === "light" ? "#f3eee2" : "#0a0a07";
+}
+window.addEventListener("pywebviewready", () => {
+  fallbackBackground = false;
+  document.documentElement.style.background = "";
+});
+
+const $ = (id) => document.getElementById(id);
+const fmt = (v, digits = 0) => {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "0";
+  return digits ? n.toFixed(digits) : String(Math.round(n));
+};
+
+function renderDetail(host, config) {
+  const box = $("detail");
+  const enabled = OBS_MODE ? !!config.obs_detail : !!config.overlay_detail;
+  if (!enabled) {
+    box.hidden = true;
+    box.replaceChildren();
+    detailSignature = "";
+    return;
+  }
+
+  const contributions = host.contributions || {};
+  const events = [];
+  const add = (key, label, kind) => {
+    const value = Number((contributions[key] || {}).value) || 0;
+    if (value < 0.5) return;
+    events.push({ label: label + " " + fmt(value) + "%", kind });
+  };
+  add("base", "基础", "base");
+  add("hit", "受击", "hit");
+  const fireValue = Number((contributions.fire || {}).value) || 0;
+  if (fireValue >= 0.5) {
+    const count = Math.max(1, Number(host.fires) || 0);
+    events.push({
+      label: "起火" + (count > 1 ? "×" + count : "") +
+        " " + fmt(fireValue) + "%",
+      kind: "fire",
+    });
+  }
+  const floodValue = Number((contributions.flood || {}).value) || 0;
+  if (floodValue >= 0.5) {
+    const count = Math.max(1, Number(host.floods) || 0);
+    events.push({
+      label: "进水" + (count > 1 ? "×" + count : "") +
+        " " + fmt(floodValue) + "%",
+      kind: "flood",
+    });
+  }
+  add("death", "死亡", "death");
+
+  const signature = events.map((item) => item.kind + ":" + item.label).join("|");
+  if (signature === detailSignature && box.childNodes.length) {
+    box.hidden = false;
+    return;
+  }
+  detailSignature = signature;
+  box.replaceChildren();
+  const label = document.createElement("span");
+  label.className = "detail-label";
+  label.textContent = "当前";
+  box.append(label);
+  const list = document.createElement("div");
+  list.className = "detail-events";
+  if (!events.length) {
+    const empty = document.createElement("span");
+    empty.className = "detail-empty";
+    empty.textContent = "静默";
+    list.append(empty);
+  } else {
+    for (const item of events) {
+      const chip = document.createElement("span");
+      chip.className = "detail-ev " + item.kind;
+      chip.textContent = item.label;
+      list.append(chip);
+    }
+  }
+  box.append(list);
+  box.hidden = false;
+}
+
+function strengthReadout(device, channel, percent, outputOn) {
+  const limits = device.limits || {};
+  const limitValue = Number(limits[channel]);
+  const limit = Number.isFinite(limitValue) ? Math.max(0, Math.round(limitValue)) : 0;
+  if (!limit) return "—";  // App 尚未上报通道上限
+  let value = device.actual && Number(device.actual[channel]);
+  if (!outputOn) {
+    value = 0;
+  } else if (!Number.isFinite(value)) {
+    // 没有 App 回报值时按通道上限折算；软件上限设置已取消。
+    const pct = Math.max(0, Math.min(100, Number(percent) || 0));
+    value = Math.round(limit * pct / 100);
+  }
+  return Math.max(0, Math.round(value || 0)) + "/" + limit;
+}
+
+function setGauge(id, value) {
+  const pct = Math.max(0, Math.min(100, Number(value) || 0));
+  $(id).style.strokeDashoffset = String(100 - pct);
+}
+
+function render(state) {
+  const host = state.host || {};
+  const device = state.device || {};
+  const totals = host.totals || { a: 0, b: 0 };
+  const config = state.config || {};
+  lastHotkeys = state.hotkeys || {};
+  applyTheme(config.theme || "dark");
+  applyOpacity(config);
+  applyLock(config);
+
+  const muted = !!device.muted;
+  const outputOn = !!device.connected && !muted;
+  const a = outputOn ? totals.a : 0;
+  const b = outputOn ? totals.b : 0;
+
+  const aRaw = strengthReadout(device, "a", a, outputOn);
+  const bRaw = strengthReadout(device, "b", b, outputOn);
+  $("a-total").textContent = fmt(a) + "%";
+  $("b-total").textContent = fmt(b) + "%";
+  $("a-raw").textContent = aRaw;
+  $("b-raw").textContent = bRaw;
+  setGauge("a-arc", a);
+  setGauge("b-arc", b);
+  $("gaugeA").setAttribute("aria-label", "A 通道 " + fmt(a) + "%，实际 " + aRaw);
+  $("gaugeB").setAttribute("aria-label", "B 通道 " + fmt(b) + "%，实际 " + bRaw);
+
+  $("ov").classList.toggle("muted", muted);
+  $("dot").className = "dot " + (muted ? "bad" : (device.connected ? "ok" : ""));
+  $("status").textContent = muted ? "已急停"
+    : (device.connected ? "已连接" : "未连接");
+
+  $("battle").textContent = host.dead ? "阵亡"
+    : (host.battle_active ? (host.alive ? "战斗中" : "战斗结束") : "等待");
+  $("hp").textContent = (host.hp_pct === null || host.hp_pct === undefined)
+    ? "HP —" : "HP " + fmt(host.hp_pct, 1) + "%";
+  renderDetail(host, config);
+}
+
+async function refresh() {
+  try {
+    const response = await fetch("/api/state", { cache: "no-store" });
+    render(await response.json());
+  } catch (err) {}
+}
+
+async function act(action) {
+  try {
+    const response = await fetch("/api/action", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action }),
+    });
+    render(await response.json());
+  } catch (err) {}
+}
+
+let closingOverlay = false;
+async function closeOverlay() {
+  if (closingOverlay) return;
+  closingOverlay = true;
+  const api = window.pywebview && window.pywebview.api;
+  if (api && api.close_window) api.close_window();
+  else window.close();
+}
+
+async function saveOverlayLock(next) {
+  try {
+    const response = await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ settings: { overlay_locked: next } }),
+    });
+    const state = await response.json();
+    if (!response.ok) throw new Error(state.error || response.status);
+    render(state);
+  } catch (err) {}
+}
+
+$("btnLock").onclick = () => saveOverlayLock(!overlayLocked);
+$("btnStop").onclick = () => act("estop");
+$("btnRearm").onclick = () => act("rearm");
+$("btnSettings").onclick = () => {
+  const api = window.pywebview && window.pywebview.api;
+  if (api && api.open_settings) {
+    api.open_settings();
+    return;
+  }
+  window.open("/settings", "wows-settings", "width=980,height=800");
+};
+if (!OBS_MODE) {
+  $("btnClose").onclick = closeOverlay;
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeOverlay();
+  });
+}
+
+refresh();
+setInterval(refresh, 250);
+</script>
+</body>
+</html>
