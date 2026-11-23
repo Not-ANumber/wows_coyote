@@ -22,9 +22,9 @@ standalone。支持 V4 Relay（DG-LAB 4）和 V3 Socket（郊狼 App）。
 
 | 文件 | 说明 |
 |---|---|
-| `wows_coyote-0.1.1-setup.exe` | Windows x64 安装包（推荐），无需管理员权限 |
-| `wows_coyote-0.1.1-win64.zip` | 免安装便携版 |
-| `wows_coyote-0.1.1-gpl.zip` | GPL-3.0 对应源码 |
+| `wows_coyote-1.0.0-setup.exe` | Windows x64 安装包（推荐），无需管理员权限 |
+| `wows_coyote-1.0.0-win64.zip` | 免安装便携版 |
+| `wows_coyote-1.0.0-gpl.zip` | GPL-3.0 对应源码 |
 
 安装包默认安装到 `%LOCALAPPDATA%\Programs\wows_coyote`。
 
@@ -38,8 +38,8 @@ standalone。支持 V4 Relay（DG-LAB 4）和 V3 Socket（郊狼 App）。
 
 ## 更新
 
-0.1.1 起支持应用内更新提示（仅提示，不自动下载/安装）。
-0.1.0 用户需要手动安装一次 0.1.1。
+1.0.0 是首个稳定版；0.1.1 起支持应用内更新提示（仅提示，不自动下载/安装）。
+0.1.0 用户需要手动安装一次 1.0.0 或更新版本。
 
 更新清单：<https://wowsdg-update.woyiba.com/wows_coyote/latest.json>
 
